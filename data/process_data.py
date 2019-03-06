@@ -51,9 +51,9 @@ def save_data(df, database_filename):
         None
     """
     
-    engine = create_engine('sqlite:///{}.db'.format(database_filename))
-    df.to_sql('msgs_database', engine, index=False)  
-
+    engine = create_engine('sqlite:///{}'.format(database_filename))
+    df.to_sql('msgs_tbl', engine, index=False, if_exists='replace')  
+    engine.dispose()
 
 def main():
     if len(sys.argv) == 4:

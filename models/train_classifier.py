@@ -22,7 +22,9 @@ from sklearn.decomposition import TruncatedSVD
 import pickle
 from workspace_utils import active_session
 
-def load_data(db_filepath, tbl_name):
+nltk.download(['punkt', 'wordnet', 'stopwords'])
+
+def load_data(db_filepath):
     """
     Loads data from database and returns X and Y.
     Args:
@@ -32,10 +34,11 @@ def load_data(db_filepath, tbl_name):
       X(pandas DataFrame): messages
       Y(pandas DataFrame): labels
     """
-    
     # read in file
-    engine = create_engine('sqlite:///{}'.format(data_filepath))
-    df = pd.read_sql_table(tbl_name, engine)
+    connection = 'sqlite:///'+db_filepath
+    engine = create_engine(connection)
+    
+    df = pd.read_sql_table('msgs_tbl', engine)
     engine.dispose()
     
     # define features and label arrays
@@ -68,14 +71,15 @@ def tokenize(text):
     return tokens
 
 def build_model():
-     """
-     Returns a GridSearchCV object to be used as the model for training
-     Args:
-        None
-     Returns:
-        cv (GridSearchCV): Grid search model object
-     """
+    """
+    Returns a GridSearchCV object to be used as the model for training
+    Args:
+       None
+    Returns:
+       cv (GridSearchCV): Grid search model object
+    """
     # text processing and model pipeline
+    forest_clf = RandomForestClassifier()
     pipeline_2 = Pipeline([
                     ('tfidf', TfidfVectorizer(tokenizer=tokenize)),
                     ('best', TruncatedSVD(n_components=100)),
@@ -83,29 +87,25 @@ def build_model():
                       ])
 
     # define parameters for GridSearchCV
-    param_grid = {
-        'tfidf__ngram_range': ((1, 1), (1, 2)),
-        'tfidf__max_df': (0.8, 1.0),
-        'tfidf__max_features': (None, 10000),
-        'best__n_components': (10, 50, 100),
-        'clf__estimator__n_estimators': [10, 20, 50, 100],
+    parameters = {
+        'clf__estimator__n_estimators': [10, 20],
         'clf__estimator__min_samples_split': [20, 40]
     }
 
     # create gridsearch object and return as final model pipeline
-    cv = GridSearchCV(pipeline_2, param_grid=parameters, n_jobs=-2)
+    cv = GridSearchCV(pipeline_2, param_grid=parameters, n_jobs=-1)
 
     return cv
 
 
-def train(X, y, model):
+def train(X, Y, cv):
     """
      Returns a model trained on training data and prints its classification report
      Args:
         X(pandas DataFrame): messages
         y(pandas DataFrame): labels
      Returns:
-        model : 
+        cv : Grid search model object
      """
     # train test split
     xtrain, xtest, ytrain, ytest = train_test_split(X, Y, test_size = 0.20, random_state = 36)
@@ -123,17 +123,32 @@ def train(X, y, model):
     return model
 
 
-def export_model(model):
-    # Export model as a pickle file
-    with open('model.pkl', 'wb') as f:
-    pickle.dump(model, f)
-
+def save_model(model):
+    """
+    Saves model as pickle file.
+    Args:
+      cv:  model
+    Return:
+      N/A
+    """
+    with open('classifer.pkl', 'wb') as f:
+        pickle.dump(model, f)  
 
 def run_pipeline(data_file):
-    X, y = load_data(data_file)  # run ETL pipeline
+    print('Getting features and labels..\n')
+    import glob 
+    import os
+    
+    filepath = glob.glob(os.getcwd()+'/*.db')[0]
+    
+    X, Y = load_data(filepath)  # run ETL pipeline
+    print('Building model..\n')
     model = build_model()  # build model pipeline
-    model = train(X, y, model)  # train model pipeline
+    print('Training Model..Printing classification report in a few moments..\n')
+    model = train(X, Y, model)  # train model pipeline
+    print('Saving model as pickle..\n')
     export_model(model)  # save model
+    print('Pipeline run successfull!')
 
 
 if __name__ == '__main__':
