@@ -1,4 +1,5 @@
 # import packages
+# import libraries
 import sys
 import numpy as np
 import pandas as pd
@@ -29,15 +30,13 @@ def load_data(db_filepath):
     Loads data from database and returns X and Y.
     Args:
       db_filepath(str): string filepath of the sqlite database
-      tbl_name:(str): table name in the database file.
     Returns:
       X(pandas DataFrame): messages
       Y(pandas DataFrame): labels
     """
-    # read in file
-    connection = 'sqlite:///'+db_filepath
-    engine = create_engine(connection)
     
+    # read in file
+    engine = create_engine('sqlite:///'+db_filepath)
     df = pd.read_sql_table('msgs_tbl', engine)
     engine.dispose()
     
@@ -82,18 +81,15 @@ def build_model():
     forest_clf = RandomForestClassifier()
     pipeline_2 = Pipeline([
                     ('tfidf', TfidfVectorizer(tokenizer=tokenize)),
-                    ('best', TruncatedSVD(n_components=100)),
+                    ('best', TruncatedSVD(n_components=50)),
                     ('clf', MultiOutputClassifier(forest_clf))
                       ])
 
     # define parameters for GridSearchCV
-    parameters = {
-        'clf__estimator__n_estimators': [10, 20],
-        'clf__estimator__min_samples_split': [20, 40]
-    }
+    parameters= {'clf__estimator__n_estimators': [10, 20], 'clf__estimator__min_samples_split': [100, 120]}
 
     # create gridsearch object and return as final model pipeline
-    cv = GridSearchCV(pipeline_2, param_grid=parameters, n_jobs=-1)
+    cv = GridSearchCV(pipeline_2, param_grid=parameters, n_jobs=-1, cv = 2)
 
     return cv
 
@@ -135,19 +131,14 @@ def save_model(model):
         pickle.dump(model, f)  
 
 def run_pipeline(data_file):
-    print('Getting features and labels..\n')
-    import glob 
-    import os
-    
-    filepath = glob.glob(os.getcwd()+'/*.db')[0]
-    
-    X, Y = load_data(filepath)  # run ETL pipeline
-    print('Building model..\n')
-    model = build_model()  # build model pipeline
-    print('Training Model..Printing classification report in a few moments..\n')
-    model = train(X, Y, model)  # train model pipeline
-    print('Saving model as pickle..\n')
-    export_model(model)  # save model
+    print('Getting features and labels..')
+    X, Y = load_data('DisasterResponse.db')  # run ETL pipeline
+    print('Building model..')
+    cv = build_model()  # build model pipeline
+    print('Training Model..Printing classification report in a few moments..')
+    model = train(X, Y, cv)  # train model pipeline
+    print('Saving model as pickle..')
+    save_model(model)  # save model
     print('Pipeline run successfull!')
 
 

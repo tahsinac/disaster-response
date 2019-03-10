@@ -52,7 +52,7 @@ def save_data(df, database_filename):
     """
     
     engine = create_engine('sqlite:///{}'.format(database_filename))
-    df.to_sql('msgs_tbl', engine, index=False, if_exists='replace')  
+    df.to_sql('msgs_tbl', engine, index=False, if_exists='replace', chunksize=15)  
     engine.dispose()
 
 def main():
