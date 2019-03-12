@@ -28,3 +28,8 @@ The project includes a web app where an emergency worker can input a new message
 - scikit-learn
 - sqlalchemy
 
+### Files In This Repo
+- classifer.pkl : trained model saved as pickel file from the ML pipeline
+- DisasterResponse.db : SQL database containing cleaned data, produced by the ELT pipeline
+- train_classifier.py : python script to train model
+- process_data.py : python script to load data from csv files, clean it and save as SQL database.
